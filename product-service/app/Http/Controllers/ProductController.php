@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\EventBus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -17,16 +18,12 @@ class ProductController extends Controller
     ]);
 
     try {
-        $response = Http::withHeaders([
-            'Authorization' => $request->header('Authorization')
-        ])->post('http://order-service.test/api/orders', [
-            'product_id' => $product->id,
-            'quantity' => 1
-        ]);
+           EventBus::publish('product.created', [
+        'product_id' => $product->id,
+        'name' => $product->name,
+        'price' => $product->price,
+    ]);
 
-        if (!$response->successful()) {
-            throw new \Exception('Order Service failed');
-        }
 
         return response()->json($product);
 
