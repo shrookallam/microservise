@@ -1,0 +1,38 @@
+_format_version: "3.0"
+
+services:
+  - name: auth-service
+    url: http://auth-service:8000
+    routes:
+      - name: auth-route
+        paths:
+          - /auth
+        strip_path: true
+
+  - name: product-service
+    url: http://product-service:8000
+    routes:
+      - name: product-route
+        paths:
+          - /products
+        strip_path: true
+        plugins:
+          - name: jwt
+
+  - name: order-service
+    url: http://order-service:8000
+    routes:
+      - name: order-route
+        paths:
+          - /orders
+        strip_path: true
+        plugins:
+          - name: jwt
+
+consumers:
+  - username: app-user
+
+jwt_secrets:
+  - consumer: app-user
+    key: app-user
+    secret: 45150482741e1eb86ad5a6ab628839822b5a7a48539507b9bbc1999cd795747b

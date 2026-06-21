@@ -2,30 +2,44 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Junges\Kafka\Facades\Kafka;
 use App\Models\Order;
+use Illuminate\Console\Command;
+use longlang\phpkafka\Consumer\Consumer;
+use longlang\phpkafka\Consumer\ConsumerConfig;
 
 class ConsumeProductCreated extends Command
 {
-    protected $signature = 'kafka:consume-products';
+    protected $signature   = 'kafka:consume-products';
+    protected $description = 'Listen for product.created events and create orders';
 
-    public function handle()
+    public function handle(): void
     {
-        Kafka::createConsumer()
-            ->subscribe('product.created')
-            ->withHandler(function ($message) {
+        $config = new ConsumerConfig();
+        $config->setBroker('kafka:9092');
+        $config->setTopic('product.created');
+        $config->setGroupId('order-service');
+        $config->setAutoCommit(false);
 
-                $data = $message->getBody();
+        $consumer = new Consumer($config);
 
-                Order::create([
-                    'product_id' => $data['product_id'],
-                    'quantity' => 1,
-                ]);
+        $this->info('Listening on product.created...');
 
-                $this->info('Order created for product: ' . $data['product_id']);
-            })
-            ->build()
-            ->consume();
+        while (true) {
+            $message = $consumer->consume();
+
+            if ($message === null) {
+                continue;
+            }
+
+            $payload = json_decode($message->getValue(), true);
+
+            Order::create([
+                'product_id'   => $payload['id'],
+                'quantity' =>1
+            ]);
+
+            $consumer->ack($message);
+            $this->info("Order created for product: {$payload['name']}");
+        }
     }
 }

@@ -3,37 +3,31 @@
 namespace App\Http\Middleware;
 
 use Closure;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Symfony\Component\HttpFoundation\Response;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 
 class ValidateAuthToken
 {
-   public function handle($request, Closure $next)
-{
-    $header = $request->header('Authorization');
+    public function handle($request, Closure $next)
+    {
+        $token = $request->bearerToken();
 
-    if (!$header) {
-        return response()->json(['message' => 'No token'], 401);
+        if (!$token) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        try {
+            $decoded = JWT::decode($token, new Key(env('JWT_SECRET'), 'HS256'));
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Invalid token'], 401);
+        }
+
+        $request->merge([
+            'auth_user' => [
+                'id' => $decoded->sub,
+            ]
+        ]);
+
+        return $next($request);
     }
-
-    $token = str_replace('Bearer ', '', $header);
-    $token = trim($token);
-
-    $response = Http::withToken($token)
-        ->get('http://auth-service.test/api/validate');
-
-    if (!$response->successful()) {
-        return response()->json([
-            'message' => 'Unauthorized',
-            'debug' => $response->body()
-        ], 401);
-    }
-
-    $request->merge([
-        'auth_user' => $response->json('user')
-    ]);
-
-    return $next($request);
-}
 }

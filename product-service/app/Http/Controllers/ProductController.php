@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Services\EventBus;
+use App\Services\KafkaProducer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -17,24 +18,13 @@ class ProductController extends Controller
         'price' => $request->price,
     ]);
 
-    try {
-           EventBus::publish('product.created', [
-        'product_id' => $product->id,
-        'name' => $product->name,
-        'price' => $product->price,
-    ]);
-
-
+app(KafkaProducer::class)->publish('product.created', [
+            'id'    => $product->id,
+            'name'  => $product->name,
+            'price' => $product->price,
+        ]);
         return response()->json($product);
 
-    } catch (\Exception $e) {
 
-        $product->delete();
-
-        return response()->json([
-            'message' => 'Failed to create order, product rolled back',
-            'error' => $e->getMessage()
-        ], 500);
-    }
 }
 }
